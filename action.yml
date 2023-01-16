@@ -17,7 +17,7 @@ outputs:
   versions:
     description: 'The latest available versions as a JSON array'
   metadata:
-    description: 'The metadata associated with each release version, including the release version, URL to the release tarball and the tarball\'s checksum'
+    description: 'The metadata associated with each release version, including the release version, URL to the release tarball and the checksum of the tarball'
 
 runs:
   using: 'docker'
