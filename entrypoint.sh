@@ -21,6 +21,6 @@ echo "Versions: ${VERSIONS}"
 echo "Metadata: ${METADATA}"
 
 if [ -n "${GITHUB_OUTPUT}" ] ; then
-    echo "checksums=${CHECKSUMS}" >> "${GITHUB_OUTPUT}"
+    echo "versions=${VERSIONS}" >> "${GITHUB_OUTPUT}"
     echo "metadata=${METADATA}" >> "${GITHUB_OUTPUT}"
 fi
