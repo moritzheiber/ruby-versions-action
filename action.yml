@@ -1,11 +1,28 @@
 name: 'Ruby Versions'
 description: 'Provides the latest available Ruby releases and their tarball checksums as output variables'
+inputs:
+  version_name:
+    description: 'The name for the Ruby release key in the metadata output'
+    required: true
+    default: 'version'
+  url_name:
+    description: 'The name for the URL key in the metadata output'
+    required: true
+    default: 'url'  
+  checksum_name:
+    description: 'The name for the checksum key in the metadata output'
+    required: true
+    default: 'checksum'
 outputs:
   versions:
     description: 'The latest available versions as a JSON array'
-  checksums:
-    description: 'The available versions in an object, alongside the checksum for the release tarballs'
+  metadata:
+    description: 'The metadata associated with each release version, including the release version, URL to the release tarball and the tarball\'s checksum'
 
 runs:
   using: 'docker'
   image: 'Dockerfile'
+  args:
+    - ${{ inputs.version_name }}
+    - ${{ inputs.url_name }}
+    - ${{ inputs.checksum_name }}
