@@ -1,0 +1,11 @@
+name: 'Ruby Versions'
+description: 'Provides the latest available Ruby releases and their tarball checksums as output variables'
+outputs:
+  versions:
+    description: 'The latest available versions as a JSON array'
+  checksums:
+    description: 'The available versions in an object, alongside the checksum for the release tarballs'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
