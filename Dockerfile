@@ -1,5 +1,5 @@
 FROM ghcr.io/moritzheiber/ruby-version-checker:latest as source
-FROM alpine:3.21
+FROM alpine:3.22
 
 # hadolint ignore=DL3018
 RUN apk --no-cache add jq
