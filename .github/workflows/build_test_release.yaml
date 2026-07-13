@@ -18,6 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
+
+      # Build the image locally without pushing, loading it into the Docker API
+      # so the tests below can run against it.
       - uses: docker/build-push-action@v7
         name: Build
         with:
@@ -26,5 +29,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: ruby-versions-action
-      - run: docker run ruby-versions-action
-        name: Run container once
+
+      - uses: actions/github-script@v9
+        name: Test container
+        with:
+          script: |
+            const test = require(`${{ github.workspace }}/.github/scripts/test-container.js`)
+            await test({ core })
