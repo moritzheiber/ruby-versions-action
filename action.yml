@@ -1,31 +1,51 @@
 name: "Ruby Versions"
-description: "Provides the latest available Ruby releases and their tarball checksums as output variables"
+description: "Provides the latest available Ruby releases, either from ruby-lang.org (with tarball checksums) or from a container repository"
 inputs:
+  repository:
+    description: "A container reference to inspect, e.g. 'library/ruby' or 'ghcr.io/acme/ruby-runtime'. Setting this switches the action into container-registry mode; when empty the latest releases are fetched from ruby-lang.org."
+    required: false
+    default: ""
+  suffixes:
+    description: "Comma-separated tag suffixes to treat as the base version in container-registry mode, e.g. 'slim,bookworm'"
+    required: false
+    default: ""
+  username:
+    description: "Registry username for container-registry mode. Only used when both 'username' and 'password' are set."
+    required: false
+    default: ""
+  password:
+    description: "Registry password for container-registry mode. Only used when both 'username' and 'password' are set."
+    required: false
+    default: ""
   version_name:
-    description: "The name for the Ruby release key in the metadata output"
+    description: "The name for the Ruby release key in the metadata output (ruby-lang.org mode)"
     required: true
     default: "version"
   url_name:
-    description: "The name for the URL key in the metadata output"
+    description: "The name for the URL key in the metadata output (ruby-lang.org mode)"
     required: true
     default: "url"
   checksum_name:
-    description: "The name for the checksum key in the metadata output"
+    description: "The name for the checksum key in the metadata output (ruby-lang.org mode)"
     required: true
     default: "checksum"
 outputs:
   versions:
-    description: "The latest available versions as a JSON array"
+    description: "The available versions as a JSON array. In ruby-lang.org mode these are release versions; in container-registry mode these are the matching image tags."
   metadata:
-    description: "The metadata associated with each release version, including the release version, URL to the release tarball and the checksum of the tarball"
+    description: "The metadata associated with each release version, including the release version, URL to the release tarball and the checksum of the tarball. Only populated in ruby-lang.org mode."
 
 runs:
   using: "docker"
   image: "Dockerfile"
-  args:
-    - ${{ inputs.version_name }}
-    - ${{ inputs.url_name }}
-    - ${{ inputs.checksum_name }}
+  env:
+    RVA_REPOSITORY: ${{ inputs.repository }}
+    RVA_SUFFIXES: ${{ inputs.suffixes }}
+    RVA_USERNAME: ${{ inputs.username }}
+    RVA_PASSWORD: ${{ inputs.password }}
+    RVA_VERSION_NAME: ${{ inputs.version_name }}
+    RVA_URL_NAME: ${{ inputs.url_name }}
+    RVA_CHECKSUM_NAME: ${{ inputs.checksum_name }}
 
 branding:
   icon: "package"

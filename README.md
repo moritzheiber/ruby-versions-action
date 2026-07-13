@@ -1,18 +1,37 @@
 # Ruby Versions docker action
 
-This actions simply provides all available stable versions of the Ruby interpreter as a JSON-structure output variable.
+Provides available Ruby versions as a JSON output. It runs in one of two modes, chosen automatically by the inputs:
+
+- ruby-lang.org mode (default): latest stable releases from cache.ruby-lang.org, with download URL and sha256 checksum.
+- container-registry mode: set `repository` to list the regular Ruby releases available as tags in that repository.
+
+Migrating from v1: the action now calls a subcommand-based checker binary and passes all inputs by name (no positional `args`). Pin to `@v2`.
 
 ## Example usage
 
 ```yaml
 - name: Fetch Ruby versions
   id: ruby-versions
-  uses: moritzheiber/ruby-versions-action@v1
+  uses: moritzheiber/ruby-versions-action@v2
 - name: Display latest versions
-- run: echo ${{ step.ruby-versions.outputs.versions }}
+  run: echo ${{ steps.ruby-versions.outputs.versions }}
 ```
 
-A more elaborate version would be to build [a matrix](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategymatrix) for other jobs out of the outputs:
+To list the Ruby versions available in a container repository, set `repository`:
+
+```yaml
+- name: Fetch available Ruby image tags
+  id: ruby-images
+  uses: moritzheiber/ruby-versions-action@v2
+  with:
+    repository: library/ruby
+    suffixes: slim,bookworm
+- name: Display available tags
+  run: echo ${{ steps.ruby-images.outputs.versions }}
+  # ["3.2.11","3.2.11-slim","3.3.11-bookworm","3.4.10", ...]
+```
+
+A more elaborate version builds [a matrix](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategymatrix) for other jobs out of the outputs:
 
 ```yaml
 # [...]
@@ -23,7 +42,7 @@ jobs:
       versions: ${{ steps.ruby-versions.outputs.versions }}
       metadata: ${{ steps.ruby-versions.outputs.metadata }}
     steps:
-      - uses: moritzheiber/ruby-versions-action@v1
+      - uses: moritzheiber/ruby-versions-action@v2
         with:
           version_name: ruby
           checksum_name: ruby_checksum
@@ -40,7 +59,7 @@ jobs:
       - run: echo "My version is ${{ matrix.ruby }} and my checksum is ${{ matrix.ruby_checksum }}"
 ```
 
-The [`include`](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategymatrixinclude) statement in the `matrix` call adds the `ruby_checksum` parameter to every available version in the `ruby` array when the matrix is expanded. For this to work one of the `matrix` parameters are passed as `version_name` and `checksum_name` to the initial step where the versions are gathered, so that the `matrix` expansion on the `ruby` keyword array (containing the available versions, i.e. number of `matrix` jobs that are run) matches the index in the `include` part. The expanded `matrix` looks like this:
+The [`include`](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategymatrixinclude) statement adds `ruby_checksum` to every version in the `ruby` array. Passing `version_name` and `checksum_name` to the gathering step keeps the `include` keys aligned with the `ruby` array index. The expanded matrix looks like this:
 
 ```yaml
 # [...]
@@ -61,45 +80,85 @@ The [`include`](https://docs.github.com/en/actions/using-workflows/workflow-synt
 
 ## Inputs
 
+### `repository`
+
+Container reference to inspect. Setting it switches to container-registry mode; empty (default) fetches from ruby-lang.org. May include a registry host and an optional trailing tag (ignored):
+
+```yaml
+- id: ruby-images
+  uses: moritzheiber/ruby-versions-action@v2
+  with:
+    repository: ghcr.io/acme/ruby-runtime
+- run: echo ${{ steps.ruby-images.outputs.versions }}
+# ["3.2.11","3.3.11","3.4.10"]
+```
+
+### `suffixes`
+
+Comma-separated tag suffixes to treat as the base version (container-registry mode). Without it only bare `major.minor.patch` tags are returned; with it, matching suffixed variants are included too:
+
+```yaml
+- id: ruby-images
+  uses: moritzheiber/ruby-versions-action@v2
+  with:
+    repository: library/ruby
+    suffixes: slim,bookworm
+- run: echo ${{ steps.ruby-images.outputs.versions }}
+# ["3.4.10","3.4.10-slim","3.4.10-bookworm"]
+```
+
+### `username` and `password`
+
+Registry credentials for container-registry mode. Both must be set; otherwise the registry is queried anonymously. Use [secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions):
+
+```yaml
+- id: ruby-images
+  uses: moritzheiber/ruby-versions-action@v2
+  with:
+    repository: ghcr.io/acme/ruby-runtime
+    username: ${{ secrets.REGISTRY_USERNAME }}
+    password: ${{ secrets.REGISTRY_PASSWORD }}
+```
+
 ### `version_name`
 
-The name for the `version` key in the `metadata` output. The default is `version`:
+The name for the `version` key in the `metadata` output (ruby-lang.org mode). The default is `version`:
 
 ```yaml
 - id: ruby-versions
-  uses: moritzheiber/ruby-versions-action@v1
+  uses: moritzheiber/ruby-versions-action@v2
   with:
     version_name: release
 - name: Display latest versions
-- run: echo ${{ step.ruby-versions.outputs.versions }}
+  run: echo ${{ steps.ruby-versions.outputs.versions }}
 # [{"url":"https://cache.ruby-lang.org/pub/ruby/3.0/ruby-3.0.5.tar.gz","release":"3.0.5","checksum":"9afc6380a027a4fe1ae1a3e2eccb6b497b9c5ac0631c12ca56f9b7beb4848776"}[...]
 ```
 
 ### `url_name`
 
-The name for the `url` key in the `metadata` output. The default is `url`:
+The name for the `url` key in the `metadata` output (ruby-lang.org mode). The default is `url`:
 
 ```yaml
 - id: ruby-versions
-  uses: moritzheiber/ruby-versions-action@v1
+  uses: moritzheiber/ruby-versions-action@v2
   with:
     url_name: download_url
 - name: Display latest versions
-- run: echo ${{ step.ruby-versions.outputs.versions }}
+  run: echo ${{ steps.ruby-versions.outputs.versions }}
 # [{"version":"3.0.5","download_url":"https://cache.ruby-lang.org/pub/ruby/3.0/ruby-3.0.5.tar.gz","checksum":"9afc6380a027a4fe1ae1a3e2eccb6b497b9c5ac0631c12ca56f9b7beb4848776"}[...]
 ```
 
 ### `checksum_name`
 
-The name for the `checksum` key in the `metadata` output. The default is `checksum`:
+The name for the `checksum` key in the `metadata` output (ruby-lang.org mode). The default is `checksum`:
 
 ```yaml
 - id: ruby-versions
-  uses: moritzheiber/ruby-versions-action@v1
+  uses: moritzheiber/ruby-versions-action@v2
   with:
     checksum_name: sha256sum
 - name: Display latest versions
-- run: echo ${{ step.ruby-versions.outputs.versions }}
+  run: echo ${{ steps.ruby-versions.outputs.versions }}
 # [{"url":"https://cache.ruby-lang.org/pub/ruby/3.0/ruby-3.0.5.tar.gz","version":"3.0.5","sha256sum":"9afc6380a027a4fe1ae1a3e2eccb6b497b9c5ac0631c12ca56f9b7beb4848776"}[...]
 ```
 
@@ -107,15 +166,21 @@ The name for the `checksum` key in the `metadata` output. The default is `checks
 
 ### `versions`
 
-The available stable Ruby interpreter versions in a JSON array:
+The available Ruby versions as a JSON array. In ruby-lang.org mode, the latest stable release versions:
 
 ```json
 ["3.0.5","3.1.3","3.2.0"]
 ```
 
+In container-registry mode, the matching image tags (including suffixed variants), sorted by version:
+
+```json
+["3.2.11","3.2.11-slim","3.3.11","3.3.11-slim","3.4.10","3.4.10-slim"]
+```
+
 ### `metadata`
 
-An object containing not just the versions themselves but also other useful metadata, like URL for the `tar.gz` tarball file [on the official Ruby download server](https://cache.ruby-lang.org/pub/ruby/) and `sha256` checksum for each release:
+Only populated in ruby-lang.org mode. Each release with its `tar.gz` download URL [on the Ruby server](https://cache.ruby-lang.org/pub/ruby/) and `sha256` checksum:
 
 ```json
 [
